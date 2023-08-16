@@ -41,8 +41,7 @@ class GlobalFinancialData(object):
     def is_token_valid(self):
         pass
 
-    def get_data(self,
-                     symbols):
+    def get_data(self, symbols):
 
         if isinstance(symbols, str):
             symbols = [symbols]
