@@ -1,11 +1,15 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, TypeDecorator
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, TypeDecorator, LargeBinary
 from typing import Any
 from sqlalchemy.orm import relationship, declared_attr
-from poros.dataModel.alchemist.BaseData import Base
+from sqlalchemy.orm import declarative_base
+from poros.lib.Decorators import auto_repr
 from decimal import Decimal
 import numpy as np
 import math
 
+__author__ = 'barkfr'
+
+Base = declarative_base()
 
 class FloatOrNone(TypeDecorator):
     impl = Float
@@ -17,82 +21,41 @@ class FloatOrNone(TypeDecorator):
 
 @auto_repr
 class TimeSeriesSpec(Base):
-    __tablename__ = 'time_series_spec'
 
-    uid = Column(Integer, primary_key=True, index=True)
-    provider = Column(String(250), nullable=True)
-    ticker = Column(String(50), nullable=True)
-    region = Column(String(100), nullable=True)
-    name = Column(String(255), nullable=True)
-    category = Column(String(50), ForeignKey('category_table_mapping.category'), nullable=False)
-    datasource = Column(String(50), nullable=True)
+    __tablename__ = 'time_series_spec'
+    __table_args__ = {'extend_existing': True}
+
+    series_id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String(50), nullable=True)
+    name = Column(String(250), nullable=True)
+    series_type = Column(String(250), nullable=True)
+    units = Column(String(250), nullable=True)
+    adjustment = Column(String(250), nullable=False)
+    meta = Column(LargeBinary, nullable=True)
 
     __mapper_args__ = {'polymorphic_identity': 'time_series_spec'}
 
-
 @auto_repr
 class TimeSeries(Base):
-    __abstract__ = True
 
-    @declared_attr
-    def uid(cls):
-        return Column(Integer, ForeignKey('time_series_spec.uid'), primary_key=True, index=True)
+    __tablename__ = 'time_series'
+    __table_args__ = {'extend_existing': True}
 
-    @declared_attr
-    def date(cls):
-        return Column(DateTime, primary_key=True)
+    series_id = Column(Integer, ForeignKey('time_series_spec.series_id'), index=True, primary_key=True)
+    symbol = Column(String(50), index=True, primary_key=True)
+    date = Column(String(15), primary_key=True)
+    close = Column(FloatOrNone, nullable=True)
 
     __mapper_args__ = {'polymorphic_identity': 'time_series'}
-
-
-@auto_repr
-class BondIndexSpec(TimeSeriesSpec):
-    __tablename__ = 'bond_index_spec'
-
-    uid = Column(Integer, ForeignKey('time_series_spec.uid'), primary_key=True, index=True)
-    pricing_currency = Column(String(3), nullable=False, index=True)
-
-    sector = Column(String(20), nullable=False)
-    rating = Column(String(10), nullable=False)
-    maturity_band = Column(String(20), nullable=False)
-    maturity = Column(Integer, nullable=True)
-
-
-    __mapper_args__ = {'polymorphic_identity': 'bond_index_spec'}
-
-@auto_repr
-class BondIndex(TimeSeries):
-    __tablename__ = 'bond_index'
-
-    uid = Column(Integer, ForeignKey('bond_index_spec.uid'), index=True, primary_key=True)
-    date = Column(DateTime, primary_key=True)
-
-    DM = Column(FloatOrNone, nullable=True)
-    RI = Column(FloatOrNone, nullable=True)
-    RY = Column(FloatOrNone, nullable=True)
-    CX = Column(FloatOrNone, nullable=True)
-    IN = Column(FloatOrNone, nullable=True)
-    YTW = Column(FloatOrNone, nullable=True)
-
-    __mapper_args__ = {'polymorphic_identity': 'bond_index'}
-    _spec = relationship("BondIndexSpec", foreign_keys=[uid])
+    _spec = relationship("TimeSeriesSpec", foreign_keys=[series_id])
 
 
 
 if __name__ == "__main__":
 
     import datetime
-    from epsilonPhi.core.dataModel.alchemist.SessionManager import SessionMgr
-    session = SessionMgr().getSessionFactory()
+    from poros.dataModel.alchemist.SessionManager import SessionManager
+    session = SessionManager().session
 
-    try:
-        session.query(ImpliedVolatility).filter(ImpliedVolatility.relative_strike.in_(['Spot', 'ATMF'])).update(
-            {"relative_strike": "100"})
-        session.commit()
-        print("UPDATE successful.")
-    except Exception as e:
-        session.rollback()
-        print("Error occurred during UPDATE:", str(e))
-    finally:
-        session.close()
+    spec = session.query(TimeSeriesSpec).all()
+
