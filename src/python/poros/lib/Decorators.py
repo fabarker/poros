@@ -19,6 +19,7 @@ class SingletonDecorator:
     def cleanup(self):
         self.instance = None
 
+
 builtin_types = [datetime.datetime, datetime.date, NoneType, Enum, int, float, bool, str, enumerate, bytes]
 
 def auto_repr(cls):

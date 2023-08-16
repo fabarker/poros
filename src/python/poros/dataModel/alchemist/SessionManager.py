@@ -46,14 +46,6 @@ class SessionManager(object):
         self.__session_factory = sessionmaker(bind=self.__engine)
         self.__Session = scoped_session(self.__session_factory)
 
-    def get_ticker_from_uid(self, uid: int) -> str:
-        # Not Implemented
-        pass
-
-    def get_uid_from_ticker(self, ticker: str) -> int:
-        # Not Implemented
-        pass
-
     @staticmethod
     def query_format_df(query):
         q = query.statement.compile(compile_kwargs={"literal_binds": True}).string
